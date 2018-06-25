@@ -9,6 +9,7 @@ import akka.actor.Props;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.file.Paths;
+import java.time.Duration;
 import java.util.concurrent.CompletionStage;
 
 import akka.stream.*;
@@ -74,7 +75,7 @@ public class Main {
          */
         final Source<BigInteger, NotUsed> factorials = source
                 .scan(BigInteger.ONE, (acc, next) -> {
-                    System.out.println("ACC : " + acc + " NEXT : " + next);
+                    //System.out.println("ACC : " + acc + " NEXT : " + next);
                     return acc.multiply(BigInteger.valueOf(next));
                 });
 
@@ -93,9 +94,39 @@ public class Main {
 //                        .map(num -> ByteString.fromString(num.toString() + "\n"))
 //                        .runWith(FileIO.toPath(Paths.get("factorials.txt")), materializer);
 
+        //reusing logic by using a flow
+        //factorials.map(BigInteger::toString).runWith(lineSink("factorial2.txt"), materializer);
 
-        factorials.map(BigInteger::toString).runWith(lineSink("factorial2.txt"), materializer);
 
+        /**
+         * Time-Based Processing
+         *
+         * Starting from the factorials source we transform the stream by zipping it together with another stream,
+         * represented by a Source that emits the number 0 to 100: the first number emitted by the factorials
+         * source is the factorial of zero, the second is the factorial of one, and so on. We combine these
+         * two by forming strings like "3! = 6".
+         *
+         * https://doc.akka.io/japi/akka/current/akka/stream/scaladsl/ZipWith.html
+         *
+         * Throttle
+         *
+         * Limit the throughput to a specific number of elements per time unit, or a
+         * specific total cost per time unit, where a function has to be provided to calculate the individual cost of each element.
+         *
+         * Throttle implements the token bucket model. There is a bucket with a given token capacity (burst size or maximumBurst).
+         * Tokens drops into the bucket at a
+         * given rate and can be 'spared' for later use up to bucket capacity to allow some burstiness.
+         * Whenever stream wants to send an element, it takes as many tokens from the bucket as number of elements.
+         * If there isn't any, throttle waits until the bucket accumulates enough tokens.
+         * Bucket is full when stream just materialized and started.
+         *
+         * throttle operator slows down the stream to 1 element per second
+         */
+
+        factorials
+                .zipWith(Source.range(0, 99), (num, idx) -> String.format("%d! = %s", idx, num))
+                .throttle(1, Duration.ofSeconds(1))
+                .runForeach(s -> System.out.println(s), materializer);
 
     }
 
