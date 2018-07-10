@@ -1,27 +1,31 @@
 package com.akka.learn;
 
-import akka.Done;
-import akka.NotUsed;
-import akka.actor.ActorRef;
-import akka.actor.ActorSystem;
-import akka.actor.Props;
-
 import java.io.IOException;
-import java.math.BigInteger;
-import java.nio.file.Paths;
-import java.time.Duration;
-import java.util.concurrent.CompletionStage;
 
-import akka.stream.*;
-import akka.stream.javadsl.*;
-import akka.util.ByteString;
+import akka.actor.ActorSystem;
+import akka.stream.ActorMaterializer;
+import akka.stream.Materializer;
+import com.akka.learn.kafka.AkkaProducer;
+import com.akka.learn.kafka.SimpleProducer;
 
 public class Main {
 
     public static void main(String[] args) throws IOException {
 
 
-        //final ActorSystem actorSystem = ActorSystem.create();
+        //simple producer
+//        String topic = "test";
+//        SimpleProducer.sendMessage(topic, SimpleProducer.uuid1);
+//        SimpleProducer.sendMessage(topic, SimpleProducer.uuid2);
+//        SimpleProducer.sendMessage(topic, SimpleProducer.uuid3);
+
+
+        final ActorSystem system = ActorSystem.create();
+        final Materializer materializer = ActorMaterializer.create(system);
+        AkkaProducer.init(system, materializer);
+        AkkaProducer.sendMessages("test-akka", SimpleProducer.uuid1);
+        AkkaProducer.sendMessages("test-akka", SimpleProducer.uuid2);
+        AkkaProducer.sendMessages("test-akka", SimpleProducer.uuid3);
 
 
         /**
@@ -50,16 +54,16 @@ public class Main {
          * Streams
          */
 
-        final ActorSystem system = ActorSystem.create("QuickStart");
+        //final ActorSystem system = ActorSystem.create("QuickStart");
 
         /**
          *  The Materializer is a factory for stream execution engines,
          *  it is the thing that makes streams run—you don’t need to worry about any of the details
          *  right now apart from that you need one for calling any of the run methods on a Source.
          */
-        final Materializer materializer = ActorMaterializer.create(system);
-
-        final Source<Integer, NotUsed> source = Source.range(1, 100);
+//        final Materializer materializer = ActorMaterializer.create(system);
+//
+//        final Source<Integer, NotUsed> source = Source.range(1, 100);
         //final CompletionStage<Done> done = source.runForeach(i -> System.out.println(i), materializer);
         //done.thenRun(() -> system.terminate());
 
@@ -73,11 +77,11 @@ public class Main {
          it is important to keep in mind that nothing is actually computed yet, this is a description of
          what we want to have computed once we run the stream.
          */
-        final Source<BigInteger, NotUsed> factorials = source
-                .scan(BigInteger.ONE, (acc, next) -> {
-                    //System.out.println("ACC : " + acc + " NEXT : " + next);
-                    return acc.multiply(BigInteger.valueOf(next));
-                });
+//        final Source<BigInteger, NotUsed> factorials = source
+//                .scan(BigInteger.ONE, (acc, next) -> {
+//                    //System.out.println("ACC : " + acc + " NEXT : " + next);
+//                    return acc.multiply(BigInteger.valueOf(next));
+//                });
 
         //final CompletionStage<Done> done = factorials.runForeach(i -> System.out.println(i), materializer);
 
@@ -123,10 +127,103 @@ public class Main {
          * throttle operator slows down the stream to 1 element per second
          */
 
-        factorials
-                .zipWith(Source.range(0, 99), (num, idx) -> String.format("%d! = %s", idx, num))
-                .throttle(1, Duration.ofSeconds(1))
-                .runForeach(s -> System.out.println(s), materializer);
+//        factorials
+//                .zipWith(Source.range(0, 99), (num, idx) -> String.format("%d! = %s", idx, num))
+//                .throttle(1, Duration.ofSeconds(1))
+//                .runForeach(s -> System.out.println(s), materializer);
+
+
+        /**
+         * Flows and Graphs
+         */
+
+//        final Source<Integer, NotUsed> source2 =
+//                Source.from(Arrays.asList(1, 2, 3, 4, 5, 6, 7, 8, 9, 10));
+
+        //https://doc.akka.io/docs/akka/current/stream/operators/Source-or-Flow/fold.html
+        //fold - Start with current value zero and then apply the current and next value to the given function,
+        //when upstream complete the current value is emitted downstream.
+//        final Sink<Integer, CompletionStage<Integer>> sink =
+//                Sink.fold(0, (aggr, next) -> aggr + next);
+
+        // connect the Source to the Sink, obtaining a RunnableFlow/RunnableGraph
+//        final RunnableGraph<CompletionStage<Integer>> runnable =
+//                source2.toMat(sink, Keep.right());
+
+        // Materialize the flow
+//        final CompletionStage<Integer> sum = runnable.run(materializer);
+//        sum.thenAccept(total -> {
+//            System.out.println("TOTAL SUM : " + total);
+//        });
+
+
+        /**
+         * Source from completion stage
+         */
+//        Source.fromCompletionStage(new CompletableFuture<Integer>().supplyAsync(() -> {
+//            return Arrays.asList(1, 2, 3);
+//        }));
+
+        // Explicitly creating and wiring up a Source, Sink and Flow
+//        Source.from(Arrays.asList(1, 2, 3, 4))
+//                .via(Flow.of(Integer.class).map(elem -> elem * 2))
+//                .to(Sink.foreach(System.out::println));
+
+        /**
+         * There are various ways to wire up different parts of a stream, the following examples show some of
+         * the available options:
+         */
+
+        // Explicitly creating and wiring up a Source, Sink and Flow
+//        Source.from(Arrays.asList(1, 2, 3, 4))
+//                .via(Flow.of(Integer.class).map(elem -> elem * 2))
+//                .to(Sink.foreach(System.out::println));
+
+        // Starting from a Source
+//        final Source<Integer, NotUsed> source1 = Source.from(Arrays.asList(1, 2, 3, 4))
+//                .map(elem -> elem * 2);
+//        source1.to(Sink.foreach(System.out::println));
+
+        // Starting from a Sink
+//        final Sink<Integer, NotUsed> sink1 = Flow.of(Integer.class)
+//                .map(elem -> elem * 2).to(Sink.foreach(System.out::println));
+//        Source.from(Arrays.asList(1, 2, 3, 4)).to(sink1);
+
+
+        /**
+         * Difference between to/toMat, and via/viaMat
+         *
+         * https://stackoverflow.com/questions/35818358/akka-stream-tomat
+         *
+         * via is just a shortcut for viaMat(...)(Keep.left), and in fact this is how it's implemented:
+         *
+         *
+         * toMat is the same as viaMat but for sinks, it lets you keep the materialized value from the
+         * left (source/flow) or right (sink) side or both
+         *
+         * Keep.both is just an alias for (a:A,b:B) => (a, b), that is a function that takes the two input
+         * parameters and return them as a tuple. It's used to have the materialized value of both left
+         * and right side when combining two flows (or source and flow or flow and sink etc)
+         **/
+
+        /**
+         *
+         * https://doc.akka.io/japi/akka/current/akka/stream/javadsl/Source.html#actorRef-int-akka.stream.OverflowStrategy-
+         *
+         * Creates a Source that is materialized as an ActorRef. Messages sent to this actor will be emitted
+         * to the stream if there is demand from downstream, otherwise they will be buffered until request for demand is received.
+         */
+//        Source<String, ActorRef> matValuePoweredSource =
+//                Source.actorRef(100, OverflowStrategy.fail());
+//
+//        Pair<ActorRef, Source<String, NotUsed>> actorRefSourcePair =
+//                matValuePoweredSource.preMaterialize(materializer);
+//
+//        actorRefSourcePair.first().tell("Hello!", ActorRef.noSender());
+
+        // pass source around for materialization
+        //actorRefSourcePair.second().runWith(Sink.foreach(System.out::println), materializer);
+
 
     }
 
@@ -136,12 +233,15 @@ public class Main {
      * that you're interested in capturing the materialized value of the source and sink and Keep.right keeps
      * the right side (i.e. sink) of the materialized value.  Keep.left would keep the materialized value on the
      * left side (i.e. source), and Keep.both would allow you to keep both.
+     *
      * @param filename
      * @return
      */
-    public static Sink<String, CompletionStage<IOResult>> lineSink(String filename) {
-        return Flow.of(String.class)
-                .map(s -> ByteString.fromString(s + "\n"))
-                .toMat(FileIO.toPath(Paths.get(filename)), Keep.right());
-    }
+//    public static Sink<String, CompletionStage<IOResult>> lineSink(String filename) {
+//        return Flow.of(String.class)
+//                .map(s -> ByteString.fromString(s + "\n"))
+//                .toMat(FileIO.toPath(Paths.get(filename)), Keep.right());
+//    }
+
+
 }

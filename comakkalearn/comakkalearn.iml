@@ -21,5 +21,10 @@
     <orderEntry type="library" name="Maven: com.typesafe:ssl-config-core_2.12:0.2.3" level="project" />
     <orderEntry type="library" name="Maven: org.scala-lang.modules:scala-parser-combinators_2.12:1.1.0" level="project" />
     <orderEntry type="library" scope="TEST" name="Maven: com.typesafe.akka:akka-testkit_2.12:2.5.13" level="project" />
+    <orderEntry type="library" name="Maven: org.apache.kafka:kafka-clients:1.0.1" level="project" />
+    <orderEntry type="library" name="Maven: org.lz4:lz4-java:1.4" level="project" />
+    <orderEntry type="library" name="Maven: org.xerial.snappy:snappy-java:1.1.4" level="project" />
+    <orderEntry type="library" name="Maven: org.slf4j:slf4j-api:1.7.25" level="project" />
+    <orderEntry type="library" name="Maven: com.typesafe.akka:akka-stream-kafka_2.12:0.22" level="project" />
   </component>
 </module>
